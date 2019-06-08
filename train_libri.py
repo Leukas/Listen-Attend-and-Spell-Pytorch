@@ -74,6 +74,32 @@ best_ler = 1.0
 record_gt_text = False
 log_writer = SummaryWriter(conf['meta_variable']['training_log_dir']+conf['meta_variable']['experiment_name'])
 
+def validate_and_save(global_step, valid_set, listener, speller, optimizer, tf_rate):
+    # Validation
+    val_loss = []
+    val_ler = []
+    
+    for batch_data, batch_label in valid_set:
+        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, 
+                                               tf_rate, idx2char, is_training=False, data='libri', **conf['model_parameter'])
+        val_loss.append(batch_loss)
+        val_ler.extend(batch_ler)
+    
+    val_loss = np.array([sum(val_loss)/len(val_loss)])
+    val_ler = np.array([sum(val_ler)/len(val_ler)])
+
+    print("Step:", global_step)
+    print("Loss:", sum(val_loss)/len(val_loss))
+    print("CER:", sum(val_ler)/len(val_ler))
+
+    torch.save(listener, listener_model_path+str(global_step))
+    torch.save(speller, speller_model_path+str(global_step))
+
+    # log_writer.add_scalars('loss',{'dev':val_loss}, global_step)
+    # log_writer.add_scalars('cer',{'dev':val_ler}, global_step)
+
+
+
 # Training
 print('Training starts...',flush=True)
 while global_step<total_steps:
@@ -86,7 +112,7 @@ while global_step<total_steps:
     for batch_data,batch_label in train_set:
         print('Current step :',global_step,end='\r',flush=True)
         
-        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate,
+        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, idx2char,
                                                is_training=True, data='libri', **conf['model_parameter'])
         global_step += 1
 
@@ -95,8 +121,7 @@ while global_step<total_steps:
             log_writer.add_scalars('cer',{'train':np.array([np.array(batch_ler).mean()])}, global_step)
         
         if global_step % valid_step == 0:
-            break
-
+            validate_and_save(global_step, valid_set, listener, speller, optimizer, tf_rate)
     
     # Validation
     val_loss = []
@@ -104,7 +129,7 @@ while global_step<total_steps:
     
     for batch_data,batch_label in valid_set:
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, 
-                                               tf_rate, is_training=False, data='libri', **conf['model_parameter'])
+                                               tf_rate, idx2char, is_training=False, data='libri', **conf['model_parameter'])
         val_loss.append(batch_loss)
         val_ler.extend(batch_ler)
     

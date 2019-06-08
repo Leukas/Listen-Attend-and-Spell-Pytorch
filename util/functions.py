@@ -54,6 +54,32 @@ def LetterErrorRate(pred_y,true_y,data):
         ed_accumalate.append(ed.eval(compressed_p,compressed_t)/len(compressed_t))
     return ed_accumalate
 
+def restore_words(labels, idx2char):
+    print(labels.size())
+    # labels = labels.squeeze()
+    # labels = labels.max(dim=-1)[1]
+    sentences = []
+    for i in range(labels.size(0)):
+        sentence = ""
+        for c in range(labels.size(1)):
+            char = idx2char[labels[i,c].item()]
+            if char == '<eos>':
+                break
+            else:
+                sentence += char 
+        # chars.append()
+        print(sentence)
+        sentences.append(sentence)
+
+    return sentences
+
+
+def WordErrorRate(pred_y,true_y):
+    wer = []
+    for p,t in zip(pred_y, true_y):
+        wer.append(ed.eval(p.split(' '),t.split(' '))/len(t.split(' ')))
+    return wer
+
 def label_smoothing_loss(pred_y,true_y,label_smoothing=0.1):
     # Self defined loss for label smoothing
     # pred_y is log-scaled and true_y is one-hot format padded with all zero vector
@@ -69,7 +95,7 @@ def label_smoothing_loss(pred_y,true_y,label_smoothing=0.1):
     return loss
 
 
-def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, is_training, data='timit',**kwargs):
+def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, idx2char, is_training, data='timit',**kwargs):
     bucketing = kwargs['bucketing']
     use_gpu = kwargs['use_gpu']
     output_class_dim = kwargs['output_class_dim']
@@ -121,6 +147,11 @@ def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rat
 
     batch_loss = loss.cpu().data.numpy()
     
+    # sentence_labels = restore_words(true_y, idx2char)
+    # pred_y = pred_y.max(dim=1)[1]
+    # sentence_predictions = restore_words(pred_y, idx2char)
+    # wer = WordErrorRate(sentence_predictions, sentence_labels)
+    # print('WER:{:.6f}'.format(sum(wer)/len(wer)))
 
 
     return batch_loss, batch_ler
